@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Energía Sostenible</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #87CEEB; }
+        canvas { border: 1px solid black; background-color: #f0f8ff; }
+        #score { position: absolute; top: 10px; left: 10px; font-size: 20px; font-weight: bold; }
+        #level { position: absolute; top: 10px; right: 10px; font-size: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="score">Puntos: 10</div>
+<div id="level">Nivel: 1</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 600;
+
+    let player = { x: 375, y: 520, width: 50, height: 50 };
+    let score = 10;
+    let items = [];
+    let gameRunning = true;
+    let level = 1;
+    let itemSpeed = 4;  // Velocidad inicial de los items
+    let itemFrequency = 1000;  // Frecuencia de aparición de los items (milisegundos)
+    let itemFrequencyDecrement = 50;  // Decremento en la frecuencia de aparición a medida que avanza el nivel
+
+    function createItem() {  
+        const types = ['solar', 'wind', 'coal', 'oil'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const x = Math.random() * (canvas.width - 30);
+        items.push({ x, y: 0, width: 30, height: 30, type });
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = 'green';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawItems() {
+        items.forEach(item => {
+            if (item.type === 'solar') ctx.fillStyle = 'yellow';
+            else if (item.type === 'wind') ctx.fillStyle = 'blue';
+            else ctx.fillStyle = 'black'; // Los bloques contaminantes son de color negro
+            ctx.fillRect(item.x, item.y, item.width, item.height);
+        });
+    }
+
+    function updateItems() {
+        items.forEach(item => item.y += itemSpeed);
+        items = items.filter(item => item.y < canvas.height);
+    }
+
+    function checkCollisions() {
+        items.forEach((item, index) => {
+            if (
+                item.x < player.x + player.width &&
+                item.x + item.width > player.x &&
+                item.y < player.y + player.height &&
+                item.y + item.height > player.y
+            ) {
+                // Si el jugador toca un bloque negro (contaminante), el juego termina inmediatamente
+                if (item.type === 'coal' || item.type === 'oil') {
+                    gameRunning = false;
+                    setTimeout(() => alert('¡Perdiste! Las energías contaminantes dominaron.'), 100);
+                    resetGame();
+                } else {
+                    // Si el jugador toca un bloque limpio (solar o eólico), sumar puntos
+                    if (item.type === 'solar' || item.type === 'wind') {
+                        score += 10;
+                    }
+                }
+                items.splice(index, 1);
+            }
+        });
+    }
+
+    function checkLevel() {
+        // Subir de nivel cuando se alcanzan 100 puntos (nivel 2)
+        if (score >= 100 && level === 1) {
+            level = 2;
+            itemSpeed = 8; // Aumentar la velocidad de caída de los items
+            itemFrequency = 800; // Aumentar la frecuencia de generación de items
+            document.getElementById('level').textContent = 'Nivel: 2';
+            alert('¡Nivel 2! La dificultad ha aumentado.');
+        }
+        // Subir a nivel 3 con 300 puntos
+        else if (score >= 300 && level === 2) {
+            level = 3;
+            itemSpeed = 12; // Aumentar aún más la velocidad de los items
+            itemFrequency = 600; // Aumentar aún más la frecuencia de aparición
+            document.getElementById('level').textContent = 'Nivel: 3';
+            alert('¡Nivel 3! El desafío es aún mayor.');
+        }
+        // Subir a nivel 4 con 500 puntos
+        else if (score >= 500 && level === 3) {
+            level = 4;
+            itemSpeed = 16; // Aumento significativo en la velocidad de caída
+            itemFrequency = 400; // Los items caen mucho más rápido
+            document.getElementById('level').textContent = 'Nivel: 4';
+            alert('¡Nivel 4! ¡Esto se ha puesto muy difícil!');
+        }
+    }
+
+    function updateGame() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPlayer();
+        drawItems();
+        updateItems();
+        checkCollisions();
+        checkLevel();
+
+        document.getElementById('score').textContent = 'Puntos: ' + score;
+
+        if (score >= 500) { // Objetivo para ganar en el nivel 4
+            gameRunning = false;
+            setTimeout(() => alert('¡Felicidades! Has salvado al planeta.'), 100);
+            resetGame();
+        } else if (score <= 0) {
+            gameRunning = false;
+            setTimeout(() => alert('Perdiste. Las energías contaminantes dominaron.'), 100);
+            resetGame();
+        }
+
+        requestAnimationFrame(updateGame);
+    }
+
+    function resetGame() {
+        score = 10; // Reinicia con 10 puntos
+        items = [];
+        gameRunning = true;
+        level = 1; // Resetear nivel
+        itemSpeed = 4;
+        itemFrequency = 1000;
+        document.getElementById('score').textContent = 'Puntos: ' + score;
+        document.getElementById('level').textContent = 'Nivel: 1';
+    }
+
+    function startGame() {
+        createItem();
+        setInterval(createItem, itemFrequency);
+        requestAnimationFrame(updateGame);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' && player.x > 0) player.x -= 20;
+        if (e.key === 'ArrowRight' && player.x < canvas.width - player.width) player.x += 20;
+    });
+
+    startGame();
+</script>
+
+</body>
+</html>
